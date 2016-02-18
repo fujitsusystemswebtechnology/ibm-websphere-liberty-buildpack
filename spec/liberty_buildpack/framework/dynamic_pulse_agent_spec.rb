@@ -24,8 +24,9 @@ module LibertyBuildpack::Framework
   describe 'DynamicPULSEAgent' do
     include_context 'component_helper'    # component context
     
+    let(:remote_dir) { File.expand_path('../../fixtures/dynamicpulse-remote', File.dirname(__FILE__)) }
+    let(:app_dir) { File.join(remote_dir, 'app') }
     let(:webinf_dir) { File.join(app_dir, 'WEB-INF') }
-    let(:xml_dir) { File.expand_path('../../fixtures/dynamicpulse-remote', File.dirname(__FILE__)) }
     let(:application_cache) { double('ApplicationCache') }
     let(:lib_directory) { File.join(webinf_dir, 'lib') }
     
@@ -40,14 +41,14 @@ module LibertyBuildpack::Framework
       # For a download request of a new relic agent jar, return the fixture jar
       LibertyBuildpack::Util::Cache::ApplicationCache.stub(:new).and_return(application_cache)
       application_cache.stub(:get).with(index_uri).and_yield(File.open('spec/fixtures/stub-dynamic-pulse-agent.zip'))
-
+      
       FileUtils.mkdir_p(lib_directory)
     end
 
     describe 'configuration' do
       it 'must have url and systemId' do
-        FileUtils.cp(File.join(xml_dir, 'dynamicpulse-remote.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
-        dynamicpulse_remote_xml = File.join(app_dir, 'WEB-INF/dynamicpulse-remote.xml')
+        FileUtils.cp(File.join(remote_dir, 'dynamicpulse-remote.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
+        dynamicpulse_remote_xml = File.join(webinf_dir, 'dynamicpulse-remote.xml')
         doc = REXML::Document.new(open(dynamicpulse_remote_xml))
         url = doc.elements['dynamicpulse-remote/centerUrl'].text
 
@@ -55,8 +56,8 @@ module LibertyBuildpack::Framework
       end
       
       it 'must have url and systemId' do
-        FileUtils.cp(File.join(xml_dir, 'dynamicpulse-remote.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
-        dynamicpulse_remote_xml = File.join(app_dir, 'WEB-INF/dynamicpulse-remote.xml')
+        FileUtils.cp(File.join(remote_dir, 'dynamicpulse-remote.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
+        dynamicpulse_remote_xml = File.join(webinf_dir, 'dynamicpulse-remote.xml')
         doc = REXML::Document.new(open(dynamicpulse_remote_xml))
         systemId = doc.elements['dynamicpulse-remote/systemId'].text
 
@@ -73,7 +74,7 @@ module LibertyBuildpack::Framework
       end
       
       it 'should be detected when the dynamicpulse-remote.xml is valid' do
-        FileUtils.cp(File.join(xml_dir, 'dynamicpulse-remote.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
+        FileUtils.cp(File.join(remote_dir, 'dynamicpulse-remote.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
         expect(detected).to eq("DynamicPULSE-3.+")
       end
       
@@ -82,7 +83,7 @@ module LibertyBuildpack::Framework
       end
       
       it 'should raise an error with ParseException if xml file is illegal format' do
-        FileUtils.cp(File.join(xml_dir, 'dynamicpulse-remote_illegalFormat.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
+        FileUtils.cp(File.join(remote_dir, 'dynamicpulse-remote_illegalFormat.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
         expect { detected }.to raise_error(REXML::ParseException)
       end
     end
@@ -95,24 +96,24 @@ module LibertyBuildpack::Framework
       end
     
       it 'should create a dynamicpulse home directory in the application root' do
-        FileUtils.cp(File.join(xml_dir, 'dynamicpulse-remote.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
+        FileUtils.cp(File.join(remote_dir, 'dynamicpulse-remote.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
         compiled
         expect(File.exist?(File.join(app_dir, '.dynamic_pulse_agent'))).to eq(true)
       end
       
       it 'should download the agent with a matching centerUrl and systemId' do
-        FileUtils.cp(File.join(xml_dir, 'dynamicpulse-remote.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
+        FileUtils.cp(File.join(remote_dir, 'dynamicpulse-remote.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
         expect { compiled }.to output(%r{Downloading DynamicPULSE Agent 3.+ from http://downloadsite/dynamicpulse/SampleWebApp/dynamicpulse-agent.zip}).to_stdout
         expect(File.exists?(File.join(app_dir, '.dynamic_pulse_agent', "dynamicpulse-agent.zip"))).to eq(true)
       end
       
       it 'should raise an error if the illegal centerUrl is in the dynamicpulse-remote.xml' do
-        FileUtils.cp(File.join(xml_dir, 'dynamicpulse-remote_illegalCenterUrl.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
+        FileUtils.cp(File.join(remote_dir, 'dynamicpulse-remote_illegalCenterUrl.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
         allow(LibertyBuildpack::Util).to receive(:download).and_raise('underlying download error')
       end
       
       it 'should raise an error if the centerUrl is not in the dynamicpulse-remote.xml' do
-        FileUtils.cp(File.join(xml_dir, 'dynamicpulse-remote_notCenterUrl.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
+        FileUtils.cp(File.join(remote_dir, 'dynamicpulse-remote_notCenterUrl.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
         dynamicpulse = DynamicPULSEAgent.new(app_dir: app_dir, lib_directory: lib_directory)
         expect { dynamicpulse.compile }.to raise_error(%r{url , or systemId  is not available, detect needs to be invoked})
       end
@@ -127,7 +128,7 @@ module LibertyBuildpack::Framework
       end
       
       it 'should return command line options for a valid service in a default container' do
-        FileUtils.cp(File.join(xml_dir, 'dynamicpulse-remote.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
+        FileUtils.cp(File.join(remote_dir, 'dynamicpulse-remote.xml'), File.join(webinf_dir, 'dynamicpulse-remote.xml'))
         expect(released).to include("-javaagent:/home/vcap/app/.dynamic_pulse_agent/aspectjweaver.jar")
         expect(released).to include("-Dorg.aspectj.tracing.factory=default")
       end
